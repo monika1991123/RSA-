@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_file
 from rsa_crypto import RSACrypto
 import os
+import base64
 
 app = Flask(__name__)
 crypto = RSACrypto()
@@ -37,6 +38,7 @@ def encrypt():
         }), 400
     
     try:
+        # 加密并返回base64编码的密文
         ciphertext = crypto.encrypt(public_key, plaintext)
         return jsonify({
             'status': 'success',
@@ -61,6 +63,7 @@ def decrypt():
         }), 400
     
     try:
+        # 直接传递base64密文
         plaintext = crypto.decrypt(private_key, ciphertext)
         return jsonify({
             'status': 'success',
@@ -69,7 +72,7 @@ def decrypt():
     except Exception as e:
         return jsonify({
             'status': 'error',
-            'message': str(e)
+            'message': f'解密失败: {str(e)}'
         }), 400
 
 @app.route('/save-file', methods=['POST'])

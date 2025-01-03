@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RSA加解密工具</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
     <div class="container">
@@ -121,7 +121,7 @@
                 reader.onload = function(e) {
                     const textarea = document.getElementById('decryptPrivateKey');
                     textarea.value = e.target.result;
-                    textarea.type = 'password'; // 确保导入后为隐藏状态
+                    textarea.type = 'password';
                 };
                 reader.readAsText(file);
             }
@@ -133,10 +133,9 @@
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     const textarea = document.getElementById('ciphertext');
-                    textarea.value = e.target.result;
-                    textarea.type = 'password'; // 确保导入后为隐藏状态
-                    textarea.value = '*'.repeat(e.target.result.length); // 显示*号
-                    textarea.nextElementSibling.textContent = '复制'; // 改为复制文字
+                    textarea.value = '*'.repeat(e.target.result.length);
+                    textarea.type = 'password';
+                    textarea.dataset.original = e.target.result; // 存储原始密文
                 };
                 reader.readAsText(file);
             }
@@ -147,11 +146,11 @@
             const passwordFields = document.querySelectorAll('textarea[type="password"]');
             passwordFields.forEach(field => {
                 field.type = 'password';
-                field.nextElementSibling.textContent = '👁️';
+                field.nextElementSibling.textContent = '复制';
             });
         });
 
-        // 其他原有功能保持不变
+        // 生成密钥对
         document.getElementById('generateKeys').addEventListener('click', async () => {
             try {
                 const response = await fetch('/generate-keys', { method: 'POST' });
@@ -167,6 +166,7 @@
             }
         });
 
+        // 加密
         document.getElementById('encrypt').addEventListener('click', async () => {
             const publicKey = document.getElementById('publicKey').value;
             const plaintext = document.getElementById('plaintext').value;
@@ -182,7 +182,10 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ public_key: publicKey, plaintext: plaintext })
+                    body: JSON.stringify({ 
+                        public_key: publicKey, 
+                        plaintext: plaintext 
+                    })
                 });
                 const data = await response.json();
                 if (data.status === 'success') {
@@ -195,9 +198,11 @@
             }
         });
 
+        // 解密
         document.getElementById('decrypt').addEventListener('click', async () => {
             const privateKey = document.getElementById('decryptPrivateKey').value;
-            const ciphertext = document.getElementById('ciphertext').value;
+            const ciphertext = document.getElementById('ciphertext').dataset.original || 
+                             document.getElementById('ciphertext').value;
 
             if (!privateKey || !ciphertext) {
                 alert('请输入私钥和密文');
@@ -210,7 +215,10 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ private_key: privateKey, ciphertext: ciphertext })
+                    body: JSON.stringify({ 
+                        private_key: privateKey, 
+                        ciphertext: ciphertext 
+                    })
                 });
                 const data = await response.json();
                 if (data.status === 'success') {
