@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RSA加解密工具</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>RSA加解密工具</h1>
+        
+        <div class="section">
+            <h2>加密</h2>
+            <button id="generateKeys">生成新密钥对</button>
+            <div class="key-display">
+                <div>
+                    <label>公钥:</label>
+                    <textarea id="publicKey" readonly></textarea>
+                </div>
+                <div>
+                    <label>私钥 (请安全保存):</label>
+                    <textarea id="privateKey" readonly></textarea>
+                </div>
+            </div>
+            <div class="encrypt-section">
+                <label>输入要加密的明文:</label>
+                <textarea id="plaintext"></textarea>
+                <button id="encrypt">加密</button>
+                <div>
+                    <label>加��结果:</label>
+                    <textarea id="encryptResult" readonly></textarea>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <h2>解密</h2>
+            <div class="decrypt-section">
+                <label>输入私钥:</label>
+                <textarea id="decryptPrivateKey"></textarea>
+                <label>输入密文:</label>
+                <textarea id="ciphertext"></textarea>
+                <button id="decrypt">解密</button>
+                <div>
+                    <label>解密结果:</label>
+                    <textarea id="decryptResult" readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('generateKeys').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/generate-keys', { method: 'POST' });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('publicKey').value = data.public_key;
+                    document.getElementById('privateKey').value = data.private_key;
+                } else {
+                    alert('密钥对生成失败: ' + data.message);
+                }
+            } catch (error) {
+                alert('生成密钥对时发生错误: ' + error);
+            }
+        });
+
+        document.getElementById('encrypt').addEventListener('click', async () => {
+            const publicKey = document.getElementById('publicKey').value;
+            const plaintext = document.getElementById('plaintext').value;
+
+            if (!publicKey || !plaintext) {
+                alert('请确保已生成密钥对且输入了明文');
+                return;
+            }
+
+            try {
+                const response = await fetch('/encrypt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ public_key: publicKey, plaintext: plaintext })
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('encryptResult').value = data.ciphertext;
+                } else {
+                    alert('加密失败: ' + data.message);
+                }
+            } catch (error) {
+                alert('加密过程中发生错误: ' + error);
+            }
+        });
+
+        document.getElementById('decrypt').addEventListener('click', async () => {
+            const privateKey = document.getElementById('decryptPrivateKey').value;
+            const ciphertext = document.getElementById('ciphertext').value;
+
+            if (!privateKey || !ciphertext) {
+                alert('请输入私钥和密文');
+                return;
+            }
+
+            try {
+                const response = await fetch('/decrypt', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ private_key: privateKey, ciphertext: ciphertext })
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    document.getElementById('decryptResult').value = data.plaintext;
+                } else {
+                    alert('解密失败: ' + data.message);
+                }
+            } catch (error) {
+                alert('解密过程中发生错误: ' + error);
+            }
+        });
+    </script>
+</body>
+</html>
