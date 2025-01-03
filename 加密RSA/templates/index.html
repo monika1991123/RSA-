@@ -17,10 +17,12 @@
                 <div>
                     <label>公钥:</label>
                     <textarea id="publicKey" readonly></textarea>
+                    <button onclick="saveFile('publicKey', 'public_key.pem')">保存公钥</button>
                 </div>
                 <div>
                     <label>私钥 (请安全保存):</label>
                     <textarea id="privateKey" readonly></textarea>
+                    <button onclick="saveFile('privateKey', 'private_key.pem')">保存私钥</button>
                 </div>
             </div>
             <div class="encrypt-section">
@@ -28,8 +30,9 @@
                 <textarea id="plaintext"></textarea>
                 <button id="encrypt">加密</button>
                 <div>
-                    <label>加��结果:</label>
+                    <label>加密结果:</label>
                     <textarea id="encryptResult" readonly></textarea>
+                    <button onclick="saveFile('encryptResult', 'ciphertext.txt')">保存密文</button>
                 </div>
             </div>
         </div>
@@ -37,20 +40,118 @@
         <div class="section">
             <h2>解密</h2>
             <div class="decrypt-section">
-                <label>输入私钥:</label>
-                <textarea id="decryptPrivateKey"></textarea>
-                <label>输入密文:</label>
-                <textarea id="ciphertext"></textarea>
+                <div>
+                    <label>上传私钥文件:</label>
+                    <input type="file" id="privateKeyFile" accept=".pem">
+                    <div class="input-container">
+                        <textarea id="decryptPrivateKey" placeholder="或直接粘贴私钥内容" type="password"></textarea>
+                        <button class="copy-btn" onclick="copyToClipboard('decryptPrivateKey')">复制</button>
+                    </div>
+                </div>
+                <div>
+                    <label>上传密文文件:</label>
+                    <input type="file" id="ciphertextFile" accept=".txt">
+                    <div class="input-container">
+                        <textarea id="ciphertext" placeholder="或直接粘贴密文内容" type="password"></textarea>
+                        <button class="copy-btn" onclick="copyToClipboard('ciphertext')">复制</button>
+                    </div>
+                </div>
                 <button id="decrypt">解密</button>
                 <div>
                     <label>解密结果:</label>
-                    <textarea id="decryptResult" readonly></textarea>
+                    <div class="input-container">
+                        <textarea id="decryptResult" readonly type="password"></textarea>
+                        <button class="copy-btn" onclick="copyToClipboard('decryptResult')">复制</button>
+                        <button onclick="saveFile('decryptResult', 'decrypted.txt')">保存</button>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 
+    <style>
+        .input-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 10px 0;
+        }
+        
+        .copy-btn {
+            padding: 5px 10px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        
+        .copy-btn:hover {
+            background: #e0e0e0;
+        }
+    </style>
+
     <script>
+        // 复制到剪贴板
+        function copyToClipboard(id) {
+            const textarea = document.getElementById(id);
+            textarea.select();
+            document.execCommand('copy');
+            alert('已复制到剪贴板');
+        }
+
+        // 保存文件功能
+        function saveFile(textareaId, filename) {
+            const content = document.getElementById(textareaId).value;
+            if (!content) {
+                alert('内容为空');
+                return;
+            }
+            const blob = new Blob([content], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = filename;
+            link.click();
+        }
+
+        // 文件上传处理
+        document.getElementById('privateKeyFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const textarea = document.getElementById('decryptPrivateKey');
+                    textarea.value = e.target.result;
+                    textarea.type = 'password'; // 确保导入后为隐藏状态
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        document.getElementById('ciphertextFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const textarea = document.getElementById('ciphertext');
+                    textarea.value = e.target.result;
+                    textarea.type = 'password'; // 确保导入后为隐藏状态
+                    textarea.value = '*'.repeat(e.target.result.length); // 显示*号
+                    textarea.nextElementSibling.textContent = '复制'; // 改为复制文字
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        // 初始化时设置所有密码框类型
+        document.addEventListener('DOMContentLoaded', function() {
+            const passwordFields = document.querySelectorAll('textarea[type="password"]');
+            passwordFields.forEach(field => {
+                field.type = 'password';
+                field.nextElementSibling.textContent = '👁️';
+            });
+        });
+
+        // 其他原有功能保持不变
         document.getElementById('generateKeys').addEventListener('click', async () => {
             try {
                 const response = await fetch('/generate-keys', { method: 'POST' });

@@ -87,31 +87,55 @@ class RSACrypto:
     def decrypt(self, private_key_pem: str, ciphertext: str) -> str:
         """使用私钥解密数据"""
         try:
+            # 验证输入
+            if not private_key_pem.strip():
+                raise ValueError("私钥不能为空")
+            if not ciphertext.strip():
+                raise ValueError("密文不能为空")
+            
+            # 检查私钥格式
+            if not private_key_pem.startswith("-----BEGIN PRIVATE KEY-----"):
+                raise ValueError("私钥格式错误：必须以'-----BEGIN PRIVATE KEY-----'开头")
+            
             # 加载私钥
-            private_key = load_pem_private_key(
-                private_key_pem.encode(),
-                password=None
-            )
+            try:
+                private_key = load_pem_private_key(
+                    private_key_pem.encode(),
+                    password=None
+                )
+            except ValueError as e:
+                raise ValueError(f"私钥加载失败: {str(e)}")
             
             # 解码密文
             try:
-                encrypted_data = base64.b16decode(ciphertext.upper())
+                encrypted_data = base64.b64decode(ciphertext)
             except ValueError:
-                raise ValueError("密文格式错误：请确保输入的是有效的16进制格式")
+                raise ValueError("密文格式错误：请确保输入的是有效的base64格式")
             
             # 解密数据
-            plaintext = private_key.decrypt(
-                encrypted_data,
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
+            try:
+                plaintext = private_key.decrypt(
+                    encrypted_data,
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
                 )
-            )
+            except Exception as e:
+                raise ValueError(f"解密失败: {str(e)}")
             
             return plaintext.decode()
-        except InvalidKey:
-            raise ValueError("私钥错误：无法使用提供的私钥进行解密")
         except Exception as e:
             self.logger.error(f"解密过程中发生错误: {str(e)}")
+            raise ValueError(f"解密失败: {str(e)}")
+
+    def save_to_file(self, content: str, filename: str):
+        """保存内容到文件"""
+        try:
+            with open(filename, 'w') as f:
+                f.write(content)
+            return True
+        except Exception as e:
+            self.logger.error(f"保存文件失败: {str(e)}")
             raise
