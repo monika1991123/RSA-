@@ -44,24 +44,45 @@ class RSACrypto:
     def encrypt(self, public_key_pem: str, plaintext: str) -> str:
         """使用公钥加密数据"""
         try:
+            # 验证输入
+            if not public_key_pem.strip():
+                raise ValueError("公钥不能为空")
+            if not plaintext.strip():
+                raise ValueError("明文不能为空")
+            
+            # 检查公钥格式
+            if not public_key_pem.startswith("-----BEGIN PUBLIC KEY-----"):
+                raise ValueError("公钥格式错误：必须以'-----BEGIN PUBLIC KEY-----'开头")
+            
             # 加载公钥
-            public_key = serialization.load_pem_public_key(public_key_pem.encode())
+            try:
+                public_key = serialization.load_pem_public_key(public_key_pem.encode())
+            except ValueError as e:
+                raise ValueError(f"公钥加载失败: {str(e)}")
+            
+            # 检查明文长度
+            max_length = (public_key.key_size // 8) - 66  # OAEP padding overhead
+            if len(plaintext.encode()) > max_length:
+                raise ValueError(f"明文过长：最大允许{max_length}字节")
             
             # 加密数据
-            ciphertext = public_key.encrypt(
-                plaintext.encode(),
-                padding.OAEP(
-                    mgf=padding.MGF1(algorithm=hashes.SHA256()),
-                    algorithm=hashes.SHA256(),
-                    label=None
+            try:
+                ciphertext = public_key.encrypt(
+                    plaintext.encode(),
+                    padding.OAEP(
+                        mgf=padding.MGF1(algorithm=hashes.SHA256()),
+                        algorithm=hashes.SHA256(),
+                        label=None
+                    )
                 )
-            )
+            except Exception as e:
+                raise ValueError(f"加密失败: {str(e)}")
             
             # 转换为base64格式
-            return base64.b16encode(ciphertext).decode()
+            return base64.b64encode(ciphertext).decode()
         except Exception as e:
             self.logger.error(f"加密过程中发生错误: {str(e)}")
-            raise
+            raise ValueError(f"加密失败: {str(e)}")
 
     def decrypt(self, private_key_pem: str, ciphertext: str) -> str:
         """使用私钥解密数据"""
@@ -93,4 +114,4 @@ class RSACrypto:
             raise ValueError("私钥错误：无法使用提供的私钥进行解密")
         except Exception as e:
             self.logger.error(f"解密过程中发生错误: {str(e)}")
-            raise 
+            raise
